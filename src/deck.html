@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10% · A Little Pause — 1조</title>
+<link rel="stylesheet" data-inline-fonts href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jost:wght@200..500&family=Nanum+Pen+Script&display=block">
+<style>
+:root{
+  --ground:#F4F6FA; --paper:#FFFFFF;
+  --ink:#22355C; --ink-2:#4E6185; --line:rgba(34,53,92,.14);
+  --blue:#3F72C4; --blue-soft:#9DBDEB;
+  --sky:#E2EBF8; --lilac:#E8E4F5; --sage:#E2EEE4; --sand:#F4EEE6;
+  --sky-chip:#D6E3F6; --lilac-chip:#DAD3F0; --sage-chip:#A9C9AF; --sand-chip:#EFE6DA;
+  --alert:#E0574F;
+  --kr:'Gowun Dodum','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+  --num:'Jost','Segoe UI',sans-serif;
+  --pen:'Nanum Pen Script','Gowun Dodum',cursive;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html,body{height:100%;background:var(--ground);color:var(--ink);font-family:var(--kr);overflow:hidden;word-break:keep-all;overflow-wrap:break-word}
+::selection{background:var(--blue-soft);color:var(--ink)}
+:focus-visible{outline:3px solid var(--blue);outline-offset:4px;border-radius:6px}
+.num{font-family:var(--num);font-weight:300;letter-spacing:-.01em}
+.pen{font-family:var(--pen);color:var(--blue)}
+
+/* stage: 1920×1080, scaled to fit */
+.deck{position:fixed;inset:0;background:var(--ground)}
+.stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden}
+.slide{position:absolute;inset:0;padding:150px 140px 120px;background:var(--ground);
+  opacity:0;visibility:hidden;filter:blur(8px);transform:scale(1.012);
+  transition:opacity .8s var(--ease),filter .8s var(--ease),transform .8s var(--ease),visibility 0s .8s}
+.slide.is-active{opacity:1;visibility:visible;filter:none;transform:none;transition-delay:0s}
+.slide[data-tone=sky]{background:var(--sky)}
+.slide[data-tone=lilac]{background:var(--lilac)}
+.slide[data-tone=sage]{background:var(--sage)}
+.slide[data-tone=sand]{background:var(--sand)}
+
+/* status bar — the battery drains with the talk */
+.sb{position:absolute;left:0;right:0;top:0;height:84px;padding:0 72px;display:flex;align-items:center;justify-content:space-between;font-family:var(--num);font-weight:500;font-size:30px;color:var(--ink);z-index:5}
+.sb-batt{display:flex;align-items:center;gap:14px;font-variant-numeric:tabular-nums}
+.batt{position:relative;display:block;width:58px;height:28px;border:2.5px solid currentColor;border-radius:8px;padding:3px}
+.batt::after{content:"";position:absolute;right:-8px;top:8px;width:4px;height:8px;border-radius:0 3px 3px 0;background:currentColor}
+.batt-fill{display:block;height:100%;width:var(--lv,100%);border-radius:4px;background:currentColor;transition:width 1.4s var(--ease),background-color .6s}
+.sb.is-low .batt-fill{background:var(--blue)}
+.sb.is-low .sb-pct{color:var(--blue)}
+.is-active .sb.is-low .batt{animation:glow 3.2s ease-in-out 1.2s infinite}
+@keyframes glow{50%{box-shadow:0 0 0 6px rgba(63,114,196,.16)}}
+
+/* reveal grammar: visible by default, animated in only on the active slide */
+.is-active [data-r]{animation:rise 1s var(--ease) both;animation-delay:calc(var(--d,0) * 90ms + 250ms)}
+@keyframes rise{from{opacity:0;transform:translateY(28px);filter:blur(6px)}}
+
+/* type */
+.h{font-size:76px;font-weight:400;line-height:1.2;letter-spacing:-.02em;text-wrap:balance}
+.h .num{color:var(--blue);margin-right:28px;font-weight:300}
+.lead{margin-top:28px;font-size:36px;line-height:1.55;color:var(--ink-2);max-width:30em;text-wrap:pretty}
+.label{font-size:28px;color:var(--blue);letter-spacing:.02em}
+.terms{list-style:none}
+.terms li{display:grid;grid-template-columns:var(--tw,200px) 1fr;column-gap:36px;align-items:baseline;padding:30px 0;border-top:1px solid var(--line)}
+.terms li:last-child{border-bottom:1px solid var(--line)}
+.terms .label{font-size:30px}
+
+/* crops of the team's board, never redrawn */
+.crop{display:block;background-image:url(assets/board.png);background-repeat:no-repeat;
+  background-size:calc(1254 / var(--w) * 100%) auto;
+  background-position:calc(var(--x) / (1254 - var(--w)) * 100%) calc(var(--y) / (1254 - var(--h)) * 100%);
+  width:calc(var(--w) * var(--s,1) * 1px);aspect-ratio:var(--w) / var(--h)}
+.phone{border-radius:calc(24px * var(--s,1));box-shadow:0 30px 60px -20px rgba(34,53,92,.28),0 8px 18px -8px rgba(34,53,92,.18)}
+
+/* dots — like the app's onboarding pager */
+.dots{position:absolute;left:50%;bottom:34px;transform:translateX(-50%);display:flex;gap:12px;z-index:6}
+.dots button{width:12px;height:12px;border-radius:6px;border:0;background:rgba(34,53,92,.22);cursor:pointer;transition:width .5s var(--ease),background-color .5s}
+.dots button[aria-current=true]{width:40px;background:var(--blue)}
+.hint{position:absolute;right:72px;bottom:28px;font-size:22px;color:var(--ink-2);opacity:0;animation:hint 6s 1.5s both;z-index:6}
+@keyframes hint{10%,80%{opacity:1}100%{opacity:0}}
+
+/* watercolor wash, as on the board's 10% mark */
+.wash{position:absolute;pointer-events:none;filter:blur(70px) saturate(1.3);opacity:.95;-webkit-mask-image:radial-gradient(closest-side,#000 45%,transparent);mask-image:radial-gradient(closest-side,#000 45%,transparent)}
+
+/* stepper inside section 03 */
+.steps{display:flex;gap:44px;margin-top:30px;font-size:30px;color:var(--ink-2)}
+.steps span{position:relative;padding-left:26px}
+.steps span::before{content:"";position:absolute;left:0;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;border:2px solid currentColor}
+.steps span[aria-current]{color:var(--ink)}
+.steps span[aria-current]::before{background:var(--blue);border-color:var(--blue)}
+
+/* ---------- S1 cover ---------- */
+.cover .wash{left:40px;top:110px}
+.cover-10{position:absolute;left:150px;top:150px;font-family:var(--num);font-weight:200;font-size:400px;line-height:1;letter-spacing:-.03em;color:#2B4A85}
+.cover-10 .pct{font-size:.86em}
+.tracked{font-family:var(--num);font-weight:400;font-size:30px;letter-spacing:.55em;color:#4F6FA8}
+.cover .tracked{position:absolute;left:166px;top:560px}
+.cover-slogan{position:absolute;left:166px;top:672px;font-size:48px;line-height:1.5;letter-spacing:-.01em}
+.cover-team{position:absolute;left:166px;bottom:110px;display:flex;align-items:baseline;gap:36px;font-size:34px;color:var(--ink-2)}
+.cover-team b{font-weight:400;color:var(--ink);font-size:40px}
+.cover-team .who{letter-spacing:.02em}
+.cover-phones{position:absolute;right:120px;top:130px;width:700px;height:860px}
+.cover-phones .crop{position:absolute}
+.cover-phones .p-back{right:0;top:0;transform:rotate(5deg)}
+.cover-phones .p-front{left:0;top:90px;transform:rotate(-4deg)}
+
+/* ---------- S2 ideas ---------- */
+.ideas{display:grid;grid-template-columns:repeat(4,1fr);margin-top:56px;border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.idea{position:relative;height:188px;display:flex;flex-direction:column;justify-content:center;padding:0 40px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-size:58px;letter-spacing:-.01em;transition:opacity .8s var(--ease)}
+.idea .num{font-size:1.12em;font-weight:300}
+.idea{color:var(--ink-2)}
+.idea small{font-size:28px;color:var(--ink-2);margin-top:4px}
+.idea.pick{color:var(--blue)}
+.pick svg{position:absolute;inset:14px 4px;width:calc(100% - 8px);height:calc(100% - 28px);overflow:visible}
+.pick path{fill:none;stroke:var(--blue);stroke-width:4;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:0}
+.is-active .pick path{animation:draw 1.1s cubic-bezier(.65,0,.35,1) 1.5s both}
+@keyframes draw{from{stroke-dashoffset:1}}
+.pick .pen{position:absolute;right:22px;top:-40px;font-size:50px;transform:rotate(-8deg)}
+.is-active .pick .pen{animation:rise .8s var(--ease) 2.4s both}
+
+/* ---------- S3 topic ---------- */
+.topic{display:grid;grid-template-columns:640px 1fr;gap:100px;margin-top:70px}
+.big-batt{position:relative;width:560px;height:250px;border:10px solid var(--ink);border-radius:48px;padding:18px}
+.big-batt::after{content:"";position:absolute;right:-34px;top:72px;width:20px;height:86px;border-radius:0 16px 16px 0;background:var(--ink)}
+.big-batt i{display:block;height:100%;width:10%;border-radius:22px;background:var(--blue)}
+.is-active .big-batt i{animation:drain 2.2s var(--ease) .4s both}
+@keyframes drain{0%{width:100%;background:var(--ink)}55%{background:var(--alert)}100%{width:10%;background:var(--blue)}}
+.topic-word{margin-top:56px;font-size:96px;line-height:1.05;letter-spacing:-.02em}
+.topic-word .num{font-weight:200;font-size:1.5em;color:#2B4A85}
+.why{--tw:250px;margin-top:10px}
+.why p{font-size:38px;line-height:1.5;text-wrap:pretty}
+
+/* ---------- S4 draft ---------- */
+.split{display:grid;grid-template-columns:1fr 600px;gap:100px;height:100%}
+.points{--tw:150px;margin-top:48px;max-width:960px}
+.points li{padding:26px 0}
+.points p{font-size:36px;line-height:1.5;text-wrap:pretty}
+.draft{position:relative;align-self:center;margin-top:-40px}
+.draft img{display:block;width:560px;height:auto;border-radius:10px;transform:rotate(2deg);box-shadow:0 30px 60px -24px rgba(34,53,92,.35)}
+
+/* ---------- S5 logo ---------- */
+.logo-wrap{display:grid;grid-template-columns:560px 1fr;gap:120px;margin-top:40px;align-items:start}
+.logo-wrap .crop{border-radius:18px;background-color:#F3F5F9;box-shadow:0 30px 60px -24px rgba(34,53,92,.25)}
+.facts{--tw:110px}
+.facts li{padding:26px 0}
+.facts p{font-size:38px;line-height:1.4}
+.facts .q{color:var(--ink-2);font-size:30px;margin-top:2px}
+.chips{display:flex;gap:18px;margin-top:14px}
+.chips i{width:64px;height:64px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(34,53,92,.08)}
+.chips em{font-style:normal;font-size:26px;color:var(--ink-2);align-self:center;margin-left:8px}
+
+/* ---------- S6 UI filmstrip ---------- */
+.film{display:flex;align-items:flex-start;justify-content:center;gap:22px;margin:40px -80px 0}
+.film figure{display:flex;flex-direction:column;align-items:center}
+.film figcaption{margin-top:16px;font-size:30px;text-align:center;line-height:1.35;color:var(--ink)}
+.film figcaption .num{display:block;color:var(--blue);font-size:30px}
+.film-note{position:absolute;left:140px;right:140px;bottom:72px;font-size:34px;color:var(--ink-2);text-align:center}
+
+/* ---------- S7 why it changed ---------- */
+.flow{display:grid;grid-template-columns:1fr 120px 1fr 120px 1fr;align-items:end;margin-top:40px;text-align:center}
+.flow figure{display:flex;flex-direction:column;align-items:center;gap:26px}
+.flow .thumb{height:370px;display:flex;align-items:flex-end}
+.pair{position:relative;width:300px;height:370px}
+.pair .crop{position:absolute}
+.pair .crop:first-child{right:0;top:0;transform:rotate(5deg)}
+.pair .crop+.crop{left:0;bottom:0;transform:rotate(-4deg)}
+.flow img{height:360px;width:auto;border-radius:8px;box-shadow:0 20px 40px -20px rgba(34,53,92,.35)}
+.flow figcaption{font-size:34px}
+.flow figcaption small{display:block;font-size:26px;color:var(--ink-2);margin-top:6px}
+.flow .arrow{color:var(--blue);align-self:center;margin-top:-60px}
+.flow .arrow svg{width:100%}
+.because{margin-top:36px;font-size:40px;line-height:1.55;text-align:center;text-wrap:balance}
+.because b{font-weight:400;color:var(--blue)}
+
+/* ---------- S8 final board ---------- */
+.final{display:grid;grid-template-columns:1fr 880px;gap:90px;height:100%}
+.final .crop{border-radius:14px;box-shadow:0 40px 80px -30px rgba(34,53,92,.35);align-self:center;margin-top:-50px}
+.is-active .final .crop{animation:settle 1.6s var(--ease) .2s both}
+@keyframes settle{from{opacity:0;transform:scale(1.04);filter:blur(10px)}}
+.credit{margin-top:34px;font-size:44px;transform:rotate(-3deg);display:inline-block}
+.index{list-style:none;margin-top:44px;display:grid;gap:14px;font-size:30px}
+.index .num{color:var(--blue);display:inline-block;width:56px}
+
+/* ---------- S9 meaning ---------- */
+.meaning{list-style:none;margin-top:60px}
+.meaning li{display:grid;grid-template-columns:260px 1fr;align-items:baseline;padding:44px 0;border-top:1px solid var(--line)}
+.meaning li:last-child{border-bottom:1px solid var(--line)}
+.meaning .label{font-size:34px}
+.meaning p{font-size:50px;line-height:1.45;letter-spacing:-.01em;text-wrap:balance}
+
+/* ---------- S10 pause ---------- */
+.pause{display:flex;align-items:center;justify-content:center;padding:0;background:var(--paper)}
+.breath{position:absolute;left:50%;top:54%;width:1040px;height:1040px;margin:-520px 0 0 -520px}
+.breath i{position:absolute;inset:0;border-radius:50%;background:radial-gradient(closest-side,rgba(157,189,235,.0) 52%,rgba(157,189,235,.38) 78%,rgba(157,189,235,0) 100%)}
+.breath i:nth-child(2){inset:150px;background:radial-gradient(closest-side,rgba(214,227,246,.9) 40%,rgba(157,189,235,.45) 82%,rgba(157,189,235,0))}
+.breath i:nth-child(3){inset:280px;background:radial-gradient(closest-side,#fff 55%,rgba(255,255,255,0))}
+.is-active .breath{animation:breathe 8s ease-in-out .6s infinite}
+@keyframes breathe{0%,100%{transform:scale(.9)}50%{transform:scale(1.06)}}
+.slogan{position:relative;text-align:center;margin-top:100px}
+.slogan p{font-size:66px;line-height:1.5;letter-spacing:-.015em}
+.slogan .cue{position:relative;height:44px;margin-top:44px;font-size:32px;line-height:44px;color:var(--ink-2)}
+.cue span{position:absolute;left:0;right:0}
+.is-active .cue span{animation:cue 8s ease-in-out .6s infinite}
+.is-active .cue span+span{animation-name:cue2}
+.cue span+span{opacity:0}
+@keyframes cue{0%,40%{opacity:1}50%,90%{opacity:0}100%{opacity:1}}
+@keyframes cue2{0%,40%{opacity:0}50%,90%{opacity:1}100%{opacity:0}}
+.toast{position:absolute;top:104px;left:50%;width:760px;margin-left:-380px;display:flex;gap:26px;align-items:center;padding:26px 34px;border-radius:30px;background:rgba(255,255,255,.92);box-shadow:0 24px 50px -20px rgba(34,53,92,.3),0 0 0 1px rgba(34,53,92,.06);z-index:4}
+.toast .batt{color:var(--blue);flex:none}
+.toast .batt-fill{width:10%}
+.toast b{display:block;font-weight:400;font-size:32px}
+.toast span{display:block;font-size:28px;color:var(--ink-2);margin-top:4px}
+.is-active .toast{animation:drop 1s var(--ease) 1.6s both}
+@keyframes drop{from{opacity:0;transform:translateY(-40px) scale(.96)}}
+
+/* ---------- S11 reflections ---------- */
+.voices{list-style:none;margin-top:44px}
+.voices li{display:grid;grid-template-columns:170px 1fr;align-items:baseline;padding:20px 0;border-top:1px solid var(--line)}
+.voices li:last-child{border-bottom:1px solid var(--line)}
+.voices b{font-weight:400;font-size:42px}
+.voices p{font-size:34px;line-height:1.5;text-wrap:pretty}
+
+/* ---------- S12 regrets & next ---------- */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:120px;margin-top:64px}
+.two h3{font-weight:400;font-size:44px;padding-bottom:22px;border-bottom:2px solid var(--ink)}
+.two h3.next{border-color:var(--blue);color:var(--blue)}
+.two ul{list-style:none}
+.two li{padding:30px 0;border-bottom:1px solid var(--line);font-size:38px;line-height:1.45}
+.two li small{display:block;font-size:30px;color:var(--ink-2);margin-top:6px}
+
+/* ---------- S13 close ---------- */
+.close .wash{left:523px;top:120px}
+.close-inner{position:relative;text-align:center;margin-top:30px}
+.close-10{font-family:var(--num);font-weight:200;font-size:240px;line-height:1;color:#2B4A85;letter-spacing:-.03em}
+.close .tracked{display:block;margin-top:18px;font-size:40px;letter-spacing:.02em}
+.wave{display:block;width:280px;margin:40px auto 0;color:#6E91CC}
+.close .pen{display:block;margin-top:44px;font-size:72px;transform:rotate(-3deg)}
+.thanks{margin-top:56px;font-size:64px}
+.close .cover-team{left:0;right:0;justify-content:center;bottom:96px}
+
+@media (prefers-reduced-motion:reduce){
+  .slide{transition:opacity .3s,visibility 0s .3s;filter:none;transform:none}
+  .slide *,.slide{animation:none!important}
+}
+@media print{
+  @page{size:1920px 1080px;margin:0}
+  html,body{overflow:visible;height:auto;background:#fff}
+  .deck{position:static}
+  .stage{position:static;transform:none!important;width:1920px;height:auto;overflow:visible}
+  .slide{position:relative;width:1920px;height:1080px;opacity:1;visibility:visible;filter:none;transform:none;break-after:page;overflow:hidden}
+  .slide *{animation:none!important;transition:none!important}
+  .dots,.hint{display:none}
+}
+</style>
+</head>
+<body>
+<main class="deck">
+<div class="stage" id="stage">
+
+<!-- 1 · 표지 -->
+<section class="slide cover" data-batt="100" aria-label="표지">
+  <div class="wash crop" style="--x:20;--y:90;--w:230;--h:180;--s:3.9" aria-hidden="true"></div>
+  <h1 class="cover-10">10<span class="pct">%</span></h1>
+  <p class="tracked">A LITTLE PAUSE</p>
+  <p class="cover-slogan">배터리는 충전하면 되지만,<br>당신의 시간은 충전할 수 없으니까.</p>
+  <p class="cover-team"><b>1조</b><span class="who">은성 · 수연 · 강철 · 태양 · 하정</span></p>
+  <div class="cover-phones">
+    <div class="crop phone p-back" style="--x:514;--y:47;--w:228;--h:514;--s:1.42" role="img" aria-label="호흡 가이드 화면"></div>
+    <div class="crop phone p-front" style="--x:273;--y:47;--w:224;--h:514;--s:1.42" role="img" aria-label="배터리 10% 알림 화면"></div>
+  </div>
+  <p class="hint">→ · Space 다음 &nbsp; ← 이전 &nbsp; F 전체화면</p>
+</section>
+
+<!-- 2 · 01 아이디어 -->
+<section class="slide" data-tone="sky" data-batt="90" aria-label="01 어떤 아이디어가 나왔나요">
+  <h2 class="h" data-r><span class="num">01</span>어떤 아이디어가 나왔나요</h2>
+  <p class="lead" data-r style="--d:1">숫자 10이 들어간 말이라면 무엇이든. 다섯 명이 꺼내 놓은 열두&nbsp;가지 생각이에요.</p>
+  <div class="ideas">
+    <div class="idea" data-r style="--d:2">십계명</div>
+    <div class="idea pick" data-r style="--d:3">
+      <span>배터리 <span class="num">10%</span></span>
+      <svg viewBox="0 0 400 160" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M70 30 C150 4 340 8 378 52 C410 92 340 146 205 150 C92 154 14 126 24 80 C32 46 84 24 170 18"/></svg>
+      <span class="pen">채택!</span>
+    </div>
+    <div class="idea" data-r style="--d:4"><span><span class="num">10</span>대</span></div>
+    <div class="idea" data-r style="--d:5"><span><span class="num">10</span>초</span></div>
+    <div class="idea" data-r style="--d:6"><span><span class="num">10</span>월</span></div>
+    <div class="idea" data-r style="--d:7"><span><span class="num">10</span>걸음</span></div>
+    <div class="idea" data-r style="--d:8"><span><span class="num">10</span>주년</span></div>
+    <div class="idea" data-r style="--d:9"><span><span class="num">10</span>시</span></div>
+    <div class="idea" data-r style="--d:10"><span><span class="num">10</span>개</span></div>
+    <div class="idea" data-r style="--d:11"><span><span class="num">10</span>번</span></div>
+    <div class="idea" data-r style="--d:12"><span class="num">X</span><small>로마숫자 10</small></div>
+    <div class="idea" data-r style="--d:13"><span><span class="num">10</span>달러</span></div>
+  </div>
+</section>
+
+<!-- 3 · 02 채택된 주제 -->
+<section class="slide" data-tone="lilac" data-batt="80" aria-label="02 채택된 표현 주제">
+  <h2 class="h" data-r><span class="num">02</span>채택된 표현 주제</h2>
+  <div class="topic">
+    <div data-r style="--d:1">
+      <div class="big-batt" aria-hidden="true"><i></i></div>
+      <p class="topic-word">배터리 <span class="num">10%</span></p>
+    </div>
+    <ol class="why terms">
+      <li data-r style="--d:2"><span class="label">수업에서 시작</span><p>다른 강의보다 휴대폰을 많이 쓰는 수업이었어요.</p></li>
+      <li data-r style="--d:3"><span class="label">떠오른 문제</span><p>그래서 떠오른 건 현대인의 스마트폰 의존 문제.</p></li>
+      <li data-r style="--d:4"><span class="label">숫자 10과의 연결</span><p>숫자 10을, 누구나 매일 마주치는 <b style="font-weight:400;color:var(--blue)">배터리 10%</b>로 연결했어요.</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- 4 · 03 초기안 -->
+<section class="slide" data-tone="sage" data-batt="70" aria-label="03 발전 모습 — 초기안">
+  <div class="split">
+    <div>
+      <h2 class="h" data-r><span class="num">03</span>표현 주제의 발전 모습</h2>
+      <p class="steps" data-r style="--d:1"><span aria-current="step">초기안</span><span>변형안</span><span>수정안</span><span>변화의 이유</span></p>
+      <ul class="points terms">
+        <li data-r style="--d:2"><span class="label">아이디어</span><p>폰 배터리가 10% 이하로 떨어지면 자동으로 켜지는 감성 UI 모드</p></li>
+        <li data-r style="--d:3"><span class="label">디자인</span><p>화면이 은은한 회색조로 바뀌고, 안심시키는 안내와 함께 심호흡 가이드가 나와요.</p></li>
+        <li data-r style="--d:4"><span class="label">참고</span><p>‘폰 감옥·금욕상자’처럼 막는 대신, 배터리 10%라는 심리적 기점을 감성적으로 다시 해석했어요.</p></li>
+      </ul>
+    </div>
+    <figure class="draft" data-r style="--d:2">
+      <img src="assets/draft.jpg" alt="초기안 아이디어 그림: 배터리 10% 경고 알림 연동 UI/앱">
+    </figure>
+  </div>
+</section>
+
+<!-- 5 · 03 변형안 -->
+<section class="slide" data-tone="sage" data-batt="60" aria-label="03 발전 모습 — 변형안: 앱 로고">
+  <h2 class="h" data-r><span class="num">03</span>표현 주제의 발전 모습</h2>
+  <p class="steps" data-r style="--d:1"><span>초기안</span><span aria-current="step">변형안</span><span>수정안</span><span>변화의 이유</span></p>
+  <div class="logo-wrap">
+    <div class="crop" data-r style="--d:2;--x:912;--y:690;--w:332;--h:486;--s:1.2" role="img" aria-label="앱 로고와 브랜드 요소: 10% A LITTLE PAUSE, 색 견본, 물결 선"></div>
+    <ul class="facts terms">
+      <li data-r style="--d:3"><span class="label">이름</span><div><p><span class="num" style="font-weight:300">10% · A LITTLE PAUSE</span></p><p class="q">잠시 멈추는 것의 가치를 아는 서비스</p></div></li>
+      <li data-r style="--d:4"><span class="label">색</span><div><p>빨간 경고 대신, 차분한 네 가지 색</p>
+        <div class="chips" aria-hidden="true"><i style="background:var(--sky-chip)"></i><i style="background:var(--lilac-chip)"></i><i style="background:var(--sage-chip)"></i><i style="background:var(--sand-chip)"></i><em>하늘 · 라벤더 · 세이지 · 샌드</em></div></div></li>
+      <li data-r style="--d:5"><span class="label">한 줄</span><div><p><span class="num" style="font-weight:300">10% for a better you</span></p><p class="q">더 나은 나를 위한 10%</p></div></li>
+    </ul>
+  </div>
+</section>
+
+<!-- 6 · 03 수정안 -->
+<section class="slide" data-tone="sage" data-batt="50" aria-label="03 발전 모습 — 수정안: 앱 UI">
+  <h2 class="h" data-r><span class="num">03</span>표현 주제의 발전 모습</h2>
+  <p class="steps" data-r style="--d:1"><span>초기안</span><span>변형안</span><span aria-current="step">수정안</span><span>변화의 이유</span></p>
+  <div class="film">
+    <figure data-r style="--d:2"><div class="crop phone" style="--x:273;--y:47;--w:224;--h:514;--s:.84" role="img" aria-label="배터리 10% 알림 화면"></div><figcaption><span class="num">01</span>배터리 10% 알림</figcaption></figure>
+    <figure data-r style="--d:3"><div class="crop phone" style="--x:514;--y:47;--w:228;--h:514;--s:.84" role="img" aria-label="호흡 가이드 화면"></div><figcaption><span class="num">02</span>호흡 가이드</figcaption></figure>
+    <figure data-r style="--d:4"><div class="crop phone" style="--x:759;--y:47;--w:230;--h:514;--s:.84" role="img" aria-label="오프라인 미션 화면"></div><figcaption><span class="num">03</span>오프라인 미션</figcaption></figure>
+    <figure data-r style="--d:5"><div class="crop phone" style="--x:1005;--y:47;--w:230;--h:514;--s:.84" role="img" aria-label="선택 화면"></div><figcaption><span class="num">04</span>선택 화면</figcaption></figure>
+    <figure data-r style="--d:6"><div class="crop phone" style="--x:36;--y:675;--w:244;--h:483;--s:.894" role="img" aria-label="사용 기록 화면"></div><figcaption><span class="num">05</span>사용 기록</figcaption></figure>
+    <figure data-r style="--d:7"><div class="crop phone" style="--x:306;--y:675;--w:282;--h:487;--s:.887" role="img" aria-label="설정 화면"></div><figcaption><span class="num">06</span>설정</figcaption></figure>
+    <figure data-r style="--d:8"><div class="crop phone" style="--x:621;--y:675;--w:270;--h:487;--s:.887" role="img" aria-label="마무리 화면"></div><figcaption><span class="num">07</span>마무리 화면</figcaption></figure>
+  </div>
+  <p class="film-note" data-r style="--d:9">경고 대신 쉼을 권하는 흐름을, 앱 안에서 실제로 동작하는 일곱 개 화면으로 옮겼어요.</p>
+</section>
+
+<!-- 7 · 03 변화의 이유 -->
+<section class="slide" data-tone="sage" data-batt="40" aria-label="03 발전 모습 — 변화의 이유">
+  <h2 class="h" data-r><span class="num">03</span>표현 주제의 발전 모습</h2>
+  <p class="steps" data-r style="--d:1"><span>초기안</span><span>변형안</span><span>수정안</span><span aria-current="step">변화의 이유</span></p>
+  <div class="flow">
+    <figure data-r style="--d:2"><div class="thumb"><img src="assets/draft.jpg" alt="초기안 그림"></div><figcaption>초기안<small>아이디어 그림</small></figcaption></figure>
+    <div class="arrow" data-r style="--d:3" aria-hidden="true"><svg viewBox="0 0 120 24"><path d="M6 12 H112 M100 3 L113 12 L100 21" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <figure data-r style="--d:4"><div class="thumb"><div class="crop" style="--x:912;--y:690;--w:332;--h:486;--s:.74;border-radius:10px;box-shadow:0 20px 40px -20px rgba(34,53,92,.3)" role="img" aria-label="앱 로고와 브랜드 요소"></div></div><figcaption>변형안<small>앱 로고</small></figcaption></figure>
+    <div class="arrow" data-r style="--d:5" aria-hidden="true"><svg viewBox="0 0 120 24"><path d="M6 12 H112 M100 3 L113 12 L100 21" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <figure data-r style="--d:6"><div class="thumb"><div class="pair"><div class="crop phone" style="--x:514;--y:47;--w:228;--h:514;--s:.66" role="img" aria-label="호흡 가이드 화면"></div><div class="crop phone" style="--x:273;--y:47;--w:224;--h:514;--s:.66" role="img" aria-label="배터리 10% 알림 화면"></div></div></div><figcaption>수정안<small>앱 안에서 동작하는 UI</small></figcaption></figure>
+  </div>
+  <p class="because" data-r style="--d:7">처음엔 아이디어를 설명하는 <b>그림</b>이었지만,<br>점점 실제 <b>앱 디자인</b>으로 바꾸고, 앱 안의 <b>동작하는 UI</b>까지 보이도록 고쳤어요.</p>
+</section>
+
+<!-- 8 · 04 결과물 -->
+<section class="slide" data-tone="sand" data-batt="30" aria-label="04 정리된 시각화 결과물">
+  <div class="final">
+    <div>
+      <h2 class="h" data-r><span class="num">04</span>정리된<br>시각화 결과물</h2>
+      <p class="credit pen" data-r style="--d:1">시각화 · 수연</p>
+      <ol class="index">
+        <li data-r style="--d:2"><span class="num">01</span>배터리 10% 알림 화면</li>
+        <li data-r style="--d:3"><span class="num">02</span>호흡 가이드</li>
+        <li data-r style="--d:4"><span class="num">03</span>오프라인 미션</li>
+        <li data-r style="--d:5"><span class="num">04</span>선택 화면</li>
+        <li data-r style="--d:6"><span class="num">05</span>사용 기록</li>
+        <li data-r style="--d:7"><span class="num">06</span>설정</li>
+        <li data-r style="--d:8"><span class="num">07</span>마무리 화면</li>
+      </ol>
+    </div>
+    <div class="crop" style="--x:0;--y:0;--w:1253;--h:1253;--s:.702" role="img" aria-label="최종 시각화 결과물: 10% A Little Pause 앱 UI 보드 일곱 화면과 로고"></div>
+  </div>
+</section>
+
+<!-- 9 · 04 의미 -->
+<section class="slide" data-tone="sand" data-batt="20" aria-label="04 전달하려는 의미">
+  <h2 class="h" data-r><span class="num">04</span>전달하려는 의미</h2>
+  <ul class="meaning">
+    <li data-r style="--d:1"><span class="label">핵심 문제</span><p>스마트폰에 기대는 사이, 내 상태와 현실의 일상을 놓치는 것</p></li>
+    <li data-r style="--d:2"><span class="label">앱의 역할</span><p>배터리 10%를 계기로 무의식적인 사용을 알아차리고, 잠시 멈추도록 돕는 것</p></li>
+    <li data-r style="--d:3"><span class="label">최종 목표</span><p>스마트폰 사용을 스스로 조절하는 습관, 그리고 나와 현실에 대한 관심을 되찾는 것</p></li>
+  </ul>
+</section>
+
+<!-- 10 · 슬로건 -->
+<section class="slide pause" data-batt="10" aria-label="슬로건">
+  <div class="breath" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="toast" role="status"><i class="batt" aria-hidden="true"><i class="batt-fill"></i></i><div><b>배터리가 10% 남았습니다</b><span>지금, 잠시 쉬어가도 괜찮아요.</span></div></div>
+  <div class="slogan">
+    <p data-r style="--d:2">배터리는 충전하면 되지만,</p>
+    <p data-r style="--d:5">당신의 시간은 충전할 수 없으니까.</p>
+    <p class="cue" data-r style="--d:9" aria-hidden="true"><span>천천히 숨을 들이쉬세요</span><span>천천히 내쉬세요</span></p>
+  </div>
+</section>
+
+<!-- 11 · 05 배운 점 -->
+<section class="slide" data-tone="sky" data-batt="10" aria-label="05 본 과정을 통해 느낀 소감 — 배운 점">
+  <h2 class="h" data-r><span class="num">05</span>본 과정을 통해 느낀 점</h2>
+  <ul class="voices">
+    <li data-r style="--d:1"><b>은성</b><p>잘하는 분야도 생각도 서로 달라서, 의견을 나누고 조율하는 과정이 중요하다는 걸 배웠어요. 역할을 나누니 효율도 올라갔어요.</p></li>
+    <li data-r style="--d:2"><b>수연</b><p>함께 이야기하니 혼자일 때보다 다양한 아이디어가 나왔고, 배터리 10%를 스마트폰 의존 문제와 연결할 수 있었어요.</p></li>
+    <li data-r style="--d:3"><b>강철</b><p>과는 달라도 한 주제에 각자 다른 방식으로 다가가는 과정이 흥미로웠고, 함께 결과물을 내니 성취감을 느꼈어요.</p></li>
+    <li data-r style="--d:4"><b>태양</b><p>모두가 한 주제로 다양한 생각을 말하는 걸 보며, 혼자 정할 때보다 협업의 장점을 느꼈어요.</p></li>
+    <li data-r style="--d:5"><b>하정</b><p>숫자 10에서 배터리 10%, 현대인의 피로까지 이어 시각화와 상품화까지 해냈어요. 협업의 재미와 성취감을 느꼈어요.</p></li>
+  </ul>
+</section>
+
+<!-- 12 · 05 아쉬운 점과 개선점 -->
+<section class="slide" data-tone="sky" data-batt="10" aria-label="05 아쉬운 점과 개선점">
+  <h2 class="h" data-r><span class="num">05</span>아쉬웠던 점, 다음엔 이렇게</h2>
+  <div class="two">
+    <div>
+      <h3 data-r style="--d:1">아쉬웠던 점</h3>
+      <ul>
+        <li data-r style="--d:2">의견을 하나로 모으는 데 시간이 오래 걸렸어요.<small>은성</small></li>
+        <li data-r style="--d:3">의견이 제각각이라 최종안을 고르기 어려웠어요.<small>태양</small></li>
+        <li data-r style="--d:4">내 의견이 채택되지 않아 조금 아쉬웠어요.<small>태양</small></li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="next" data-r style="--d:5">다음엔 이렇게</h3>
+      <ul>
+        <li data-r style="--d:6">시작 전에 각자의 역할과 목표를 먼저 정하기<small>은성</small></li>
+        <li data-r style="--d:7">진행 상황을 실시간으로 꾸준히 공유하기<small>은성 · 태양</small></li>
+        <li data-r style="--d:8">다른 사람의 의견을 적극적으로 듣고 받아들이기<small>강철 · 수연</small></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 13 · 마무리 -->
+<section class="slide close" data-batt="10" aria-label="마무리">
+  <div class="wash crop" style="--x:20;--y:90;--w:230;--h:180;--s:3.8" aria-hidden="true"></div>
+  <div class="close-inner">
+    <p class="close-10" data-r>10%</p>
+    <p class="tracked" data-r style="--d:1">for a better you</p>
+    <svg class="wave" data-r style="--d:2" viewBox="0 0 280 40" aria-hidden="true"><path d="M4 28 C40 28 52 8 88 8 S130 34 166 30 S226 6 276 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+    <p class="pen" data-r style="--d:4">지금, 잠시 쉬어가도 괜찮아.</p>
+    <p class="thanks" data-r style="--d:6">감사합니다</p>
+  </div>
+  <p class="cover-team" data-r style="--d:7"><b>1조</b><span class="who">은성 · 수연 · 강철 · 태양 · 하정</span></p>
+</section>
+
+<nav class="dots" id="dots" aria-label="슬라이드 이동"></nav>
+</div>
+</main>
+
+<script>
+(() => {
+  const stage = document.getElementById('stage');
+  const slides = [...stage.querySelectorAll('.slide')];
+  const dots = document.getElementById('dots');
+  const level = s => +s.dataset.batt;
+
+  // one status bar per slide, so the PDF keeps each slide's battery too
+  slides.forEach(s => {
+    const lv = level(s);
+    s.insertAdjacentHTML('afterbegin',
+      `<div class="sb${lv <= 10 ? ' is-low' : ''}" aria-hidden="true"><span>10:10</span>` +
+      `<span class="sb-batt"><span class="sb-pct">${lv}%</span><i class="batt"><i class="batt-fill" style="--lv:${lv}%"></i></i></span></div>`);
+  });
+  slides.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.setAttribute('aria-label', `${i + 1}번 슬라이드: ${s.getAttribute('aria-label')}`);
+    b.onclick = e => { e.stopPropagation(); go(i); };
+    dots.append(b);
+  });
+
+  let cur = -1;
+  function go(i) {
+    i = Math.max(0, Math.min(slides.length - 1, i));
+    if (i === cur) return;
+    const from = cur < 0 ? level(slides[i]) : level(slides[cur]);
+    slides.forEach((s, k) => s.classList.toggle('is-active', k === i));
+    [...dots.children].forEach((d, k) => d.setAttribute('aria-current', k === i));
+    drain(slides[i], from);
+    cur = i;
+    history.replaceState(null, '', '#' + (i + 1));
+  }
+
+  // battery: slide in from the previous level, count the number down
+  function drain(s, from) {
+    const to = level(s), fill = s.querySelector('.sb .batt-fill'), pct = s.querySelector('.sb-pct');
+    if (from === to || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    fill.style.transition = 'none'; fill.style.setProperty('--lv', from + '%');
+    fill.offsetWidth;
+    fill.style.transition = ''; fill.style.setProperty('--lv', to + '%');
+    const t0 = performance.now();
+    (function tick(t) {
+      const k = Math.min(1, (t - t0) / 1400), e = 1 - Math.pow(1 - k, 4);
+      pct.textContent = Math.round(from + (to - from) * e) + '%';
+      if (k < 1) requestAnimationFrame(tick);
+    })(t0);
+  }
+
+  function fit() {
+    const k = Math.min(innerWidth / 1920, innerHeight / 1080);
+    stage.style.transform = `scale(${k}) translate(-50%, -50%)`;
+  }
+  addEventListener('resize', fit); fit();
+
+  addEventListener('keydown', e => {
+    if (['ArrowRight', 'PageDown', ' ', 'Enter', 'ArrowDown'].includes(e.key)) { e.preventDefault(); go(cur + 1); }
+    else if (['ArrowLeft', 'PageUp', 'Backspace', 'ArrowUp'].includes(e.key)) { e.preventDefault(); go(cur - 1); }
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(slides.length - 1);
+    else if (e.key === 'f' || e.key === 'F') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  });
+  addEventListener('click', e => go(e.clientX < innerWidth * 0.3 ? cur - 1 : cur + 1));
+
+  const fromHash = () => go((parseInt(location.hash.slice(1), 10) || 1) - 1);
+  addEventListener('hashchange', fromHash);
+  fromHash();
+})();
+</script>
+</body>
+</html>
